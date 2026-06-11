@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { Header } from "@/components/numina/Header";
 import { Footer } from "@/components/numina/Footer";
 import { Sigil } from "@/components/numina/Sigil";
 import { useNuminaWallet, shortAddress } from "@/components/numina/wallet/WalletProvider";
-import { MOCK_NUMINA, MOCK_LOG, type MockNumen, type LogEntry } from "@/components/numina/sanctum/mock";
+import { MOCK_NUMINA, type MockNumen, type LogEntry } from "@/components/numina/sanctum/mock";
+import { getActivityLog, subscribeActivity, startAmbientStream } from "@/lib/activityLog";
 
 export const Route = createFileRoute("/sanctum")({
   head: () => ({
@@ -20,6 +22,12 @@ function Sanctum() {
   const total = MOCK_NUMINA.length;
   const awake = MOCK_NUMINA.filter((n) => n.status === "awake").length;
   const pnl = MOCK_NUMINA.reduce((s, n) => s + n.pnl, 0);
+  const [entries, setEntries] = useState<LogEntry[]>(() => getActivityLog());
+  useEffect(() => {
+    setEntries(getActivityLog());
+    startAmbientStream();
+    return subscribeActivity(setEntries);
+  }, []);
 
   return (
     <div className="min-h-screen">
@@ -81,7 +89,7 @@ function Sanctum() {
             </div>
 
             <aside className="lg:sticky lg:top-24 self-start">
-              <LogStream entries={MOCK_LOG} />
+              <LogStream entries={entries} />
             </aside>
           </div>
         </section>

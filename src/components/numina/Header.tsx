@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { WalletButton } from "./wallet/WalletButton";
 
 const nav = [
   { to: "/sanctum", label: "Sanctum" },
@@ -39,13 +40,7 @@ export function Header() {
           ))}
         </nav>
 
-        <Link
-          to="/sanctum"
-          className="group relative inline-flex items-center gap-2 rounded-full border border-gold/50 bg-gold/5 px-4 py-2 text-xs uppercase tracking-[0.2em] text-gold transition-all hover:bg-gold/15 hover:shadow-[var(--glow-gold)]"
-        >
-          <span className="h-1.5 w-1.5 rounded-full bg-gold" />
-          Open the Gate
-        </Link>
+        <WalletButton />
       </div>
     </header>
   );

@@ -29,9 +29,9 @@ export function Footer() {
           <h4 className="mb-4 text-[11px] uppercase tracking-[0.25em] text-low">Mythos</h4>
           <ul className="space-y-3 text-sm text-mid">
             <li><Link to="/lore" className="hover:text-hi">Docs</Link></li>
-            <li><a href="#" className="hover:text-hi">GitHub</a></li>
-            <li><a href="#" className="hover:text-hi">X / Twitter</a></li>
-            <li><a href="#" className="hover:text-hi">Discord</a></li>
+            <li><a href="https://github.com" target="_blank" rel="noreferrer noopener" className="hover:text-hi">GitHub</a></li>
+            <li><a href="https://x.com" target="_blank" rel="noreferrer noopener" className="hover:text-hi">X / Twitter</a></li>
+            <li><a href="https://discord.com" target="_blank" rel="noreferrer noopener" className="hover:text-hi">Discord</a></li>
           </ul>
         </div>
       </div>

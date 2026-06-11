@@ -1,11 +1,19 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Header } from "@/components/numina/Header";
 import { Footer } from "@/components/numina/Footer";
 import { Sigil } from "@/components/numina/Sigil";
 import { useNuminaWallet, shortAddress } from "@/components/numina/wallet/WalletProvider";
 import { MOCK_NUMINA, type MockNumen, type LogEntry } from "@/components/numina/sanctum/mock";
-import { getActivityLog, subscribeActivity, startAmbientStream } from "@/lib/activityLog";
+import { getActivityLog, subscribeActivity, startAmbientStream, pushActivity, clearActivityLog } from "@/lib/activityLog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/sanctum")({
   head: () => ({
@@ -23,6 +31,7 @@ function Sanctum() {
   const awake = MOCK_NUMINA.filter((n) => n.status === "awake").length;
   const pnl = MOCK_NUMINA.reduce((s, n) => s + n.pnl, 0);
   const [entries, setEntries] = useState<LogEntry[]>(() => getActivityLog());
+  const [selected, setSelected] = useState<MockNumen | null>(null);
   useEffect(() => {
     setEntries(getActivityLog());
     startAmbientStream();
@@ -83,7 +92,7 @@ function Sanctum() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 {MOCK_NUMINA.map((n) => (
-                  <NumenCard key={n.id} n={n} />
+                  <NumenCard key={n.id} n={n} onOpen={() => setSelected(n)} />
                 ))}
               </div>
             </div>
@@ -95,6 +104,7 @@ function Sanctum() {
         </section>
       </main>
       <Footer />
+      <NumenDialog numen={selected} onClose={() => setSelected(null)} entries={entries} />
     </div>
   );
 }
@@ -120,16 +130,17 @@ function Stat({ label, value, tone }: { label: string; value: string; tone: "pla
   );
 }
 
-function NumenCard({ n }: { n: MockNumen }) {
+function NumenCard({ n, onOpen }: { n: MockNumen; onOpen: () => void }) {
   const statusTone =
     n.status === "awake" ? "text-plasma" : n.status === "silence" ? "text-mid" : "text-danger";
   const statusDot =
     n.status === "awake" ? "bg-plasma animate-pulse" : n.status === "silence" ? "bg-mid" : "bg-danger";
   const dim = n.status !== "awake" ? "opacity-70" : "";
   return (
-    <Link
-      to="/sanctum"
-      className={`group relative overflow-hidden rounded-2xl border border-line bg-surface/40 p-5 backdrop-blur transition-all hover:border-aether/50 hover:shadow-[var(--glow-aether)] ${dim}`}
+    <button
+      type="button"
+      onClick={onOpen}
+      className={`group relative w-full overflow-hidden rounded-2xl border border-line bg-surface/40 p-5 text-left backdrop-blur transition-all hover:border-aether/50 hover:shadow-[var(--glow-aether)] ${dim}`}
     >
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-4">
@@ -152,7 +163,7 @@ function NumenCard({ n }: { n: MockNumen }) {
         <MiniStat label="Acts" value={`${n.actions}`} tone="gold" />
       </div>
       <p className="mt-3 truncate text-xs text-mid">{n.lastAction}</p>
-    </Link>
+    </button>
   );
 }
 
@@ -175,10 +186,21 @@ function LogStream({ entries }: { entries: LogEntry[] }) {
           <div className="font-display text-[10px] uppercase tracking-[0.4em] text-gold">LogStream</div>
           <div className="mt-1 text-xs text-mid">Realtime · all bound Numina</div>
         </div>
-        <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-plasma">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-plasma" />
-          live
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-plasma">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-plasma" />
+            live
+          </span>
+          <button
+            type="button"
+            onClick={() => clearActivityLog()}
+            className="font-mono text-[10px] uppercase tracking-widest text-low hover:text-hi"
+            aria-label="Reset log"
+            title="Reset log"
+          >
+            reset
+          </button>
+        </div>
       </div>
       <ol className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
         {entries.map((e) => {

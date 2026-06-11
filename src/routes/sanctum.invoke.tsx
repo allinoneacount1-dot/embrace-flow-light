@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Header } from "@/components/numina/Header";
 import { Footer } from "@/components/numina/Footer";
 import { Sigil } from "@/components/numina/Sigil";
 import { useNuminaWallet } from "@/components/numina/wallet/WalletProvider";
+import { pushActivity } from "@/lib/activityLog";
 
 export const Route = createFileRoute("/sanctum/invoke")({
   head: () => ({
@@ -34,25 +35,71 @@ const STEPS = [
   { n: "06", t: "Seal", lore: "Sign once. The PDA is forged. The Sigil is minted." },
 ] as const;
 
+const DRAFT_KEY = "numina:rite-draft:v1";
+const DEFAULT_FORM: Form = {
+  name: "",
+  purpose: "",
+  strategy: "",
+  budget: 1,
+  maxPerTx: 0.2,
+  riskLevel: "low",
+  tithe: 10,
+};
+
+const STEP_GUIDANCE: Record<number, string> = {
+  0: "A Numen without a true name cannot be sealed. Speak between 2 and 32 glyphs.",
+  1: "Every awakening serves a purpose. Choose: trader, watcher, or hand of tasks.",
+  2: "The chain reads only what is inscribed. Write at least a single rule.",
+  3: "The bounds must hold. No single act may exceed the budget you have offered.",
+  4: "Without tithe, the vessel cannot draw breath. Offer at least 1 $LMN.",
+  5: "The seal will not hold until every prior rite is complete.",
+};
+
 function Rite() {
   const { connected, connect } = useNuminaWallet();
   const [step, setStep] = useState(0);
   const [sealed, setSealed] = useState(false);
-  const [form, setForm] = useState<Form>({
-    name: "",
-    purpose: "",
-    strategy: "",
-    budget: 1,
-    maxPerTx: 0.2,
-    riskLevel: "low",
-    tithe: 10,
-  });
+  const [form, setForm] = useState<Form>(DEFAULT_FORM);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw) as { form?: Form; step?: number };
+        if (saved.form) setForm({ ...DEFAULT_FORM, ...saved.form });
+        if (typeof saved.step === "number") setStep(Math.min(5, Math.max(0, saved.step)));
+      }
+    } catch {}
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ form, step })); } catch {}
+  }, [form, step, hydrated]);
 
   const errors = useMemo(() => validate(form, step), [form, step]);
   const canAdvance = errors.length === 0;
 
   function update<K extends keyof Form>(k: K, v: Form[K]) {
     setForm((f) => ({ ...f, [k]: v }));
+  }
+
+  function seal() {
+    if (!canAdvance || !connected) return;
+    pushActivity({
+      numen: form.name,
+      kind: "decision",
+      text: `Rite sealed · ${form.purpose} · ${form.budget} SOL · ${form.tithe} $LMN`,
+    });
+    pushActivity({
+      numen: form.name,
+      kind: "alert",
+      text: "Numen awoken — PDA forged, sigil minted",
+    });
+    try { localStorage.removeItem(DRAFT_KEY); } catch {}
+    setSealed(true);
   }
 
   if (sealed) return <SealedScene name={form.name} />;
@@ -186,9 +233,13 @@ function Rite() {
               </div>
 
               {errors.length > 0 && (
-                <ul className="mt-6 space-y-1 text-xs text-danger">
-                  {errors.map((e) => <li key={e}>· {e}</li>)}
-                </ul>
+                <div className="mt-6 rounded-xl border border-danger/40 bg-danger/5 p-4">
+                  <div className="font-display text-[10px] uppercase tracking-[0.3em] text-danger">The rite resists</div>
+                  <p className="mt-2 text-[11px] italic text-mid">{STEP_GUIDANCE[step]}</p>
+                  <ul className="mt-3 space-y-1 text-xs text-danger">
+                    {errors.map((e) => <li key={e}>· {e}</li>)}
+                  </ul>
+                </div>
               )}
 
               <div className="mt-8 flex items-center justify-between border-t border-line/60 pt-6">
@@ -209,7 +260,7 @@ function Rite() {
                   </button>
                 ) : (
                   <button
-                    onClick={() => canAdvance && connected && setSealed(true)}
+                    onClick={seal}
                     disabled={!canAdvance || !connected}
                     className="rounded-full border border-gold/60 bg-gradient-to-b from-gold/20 to-gold/5 px-6 py-2.5 text-xs uppercase tracking-widest text-gold hover:shadow-[var(--glow-gold)] disabled:opacity-40"
                   >

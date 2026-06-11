@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SanctumRouteImport } from './routes/sanctum'
+import { Route as PantheonRouteImport } from './routes/pantheon'
 import { Route as IndexRouteImport } from './routes/index'
 
 const SanctumRoute = SanctumRouteImport.update({
   id: '/sanctum',
   path: '/sanctum',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PantheonRoute = PantheonRouteImport.update({
+  id: '/pantheon',
+  path: '/pantheon',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -25,27 +31,31 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/pantheon': typeof PantheonRoute
   '/sanctum': typeof SanctumRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/pantheon': typeof PantheonRoute
   '/sanctum': typeof SanctumRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/pantheon': typeof PantheonRoute
   '/sanctum': typeof SanctumRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/sanctum'
+  fullPaths: '/' | '/pantheon' | '/sanctum'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/sanctum'
-  id: '__root__' | '/' | '/sanctum'
+  to: '/' | '/pantheon' | '/sanctum'
+  id: '__root__' | '/' | '/pantheon' | '/sanctum'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  PantheonRoute: typeof PantheonRoute
   SanctumRoute: typeof SanctumRoute
 }
 
@@ -56,6 +66,13 @@ declare module '@tanstack/react-router' {
       path: '/sanctum'
       fullPath: '/sanctum'
       preLoaderRoute: typeof SanctumRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pantheon': {
+      id: '/pantheon'
+      path: '/pantheon'
+      fullPath: '/pantheon'
+      preLoaderRoute: typeof PantheonRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -70,6 +87,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  PantheonRoute: PantheonRoute,
   SanctumRoute: SanctumRoute,
 }
 export const routeTree = rootRouteImport

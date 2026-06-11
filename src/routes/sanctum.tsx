@@ -223,3 +223,91 @@ function LogStream({ entries }: { entries: LogEntry[] }) {
     </div>
   );
 }
+
+function NumenDialog({
+  numen,
+  onClose,
+  entries,
+}: {
+  numen: MockNumen | null;
+  onClose: () => void;
+  entries: LogEntry[];
+}) {
+  const open = numen !== null;
+  const related = useMemo(
+    () => (numen ? entries.filter((e) => e.numen === numen.name).slice(0, 8) : []),
+    [entries, numen],
+  );
+  if (!numen) {
+    return (
+      <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+        <DialogContent />
+      </Dialog>
+    );
+  }
+  const statusTone =
+    numen.status === "awake" ? "text-plasma" : numen.status === "silence" ? "text-mid" : "text-danger";
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg border-line bg-surface/95 backdrop-blur-xl">
+        <DialogHeader>
+          <div className="flex items-center gap-4">
+            <Sigil seed={numen.seed} size={64} />
+            <div>
+              <DialogTitle className="font-display text-xl text-hi">{numen.name}</DialogTitle>
+              <DialogDescription className={`font-mono text-[10px] uppercase tracking-widest ${statusTone}`}>
+                ● {numen.status} · {numen.purpose}
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+        <div className="grid grid-cols-3 gap-4 border-y border-line/60 py-4">
+          <Stat label="PnL" value={`${numen.pnl >= 0 ? "+" : ""}${numen.pnl.toFixed(2)}`} tone={numen.pnl >= 0 ? "plasma" : "danger"} />
+          <Stat label="Win rate" value={`${Math.round(numen.winRate * 100)}%`} tone="aether" />
+          <Stat label="Uptime" value={`${Math.round(numen.uptime * 100)}%`} tone="gold" />
+        </div>
+        <div>
+          <div className="font-display text-[10px] uppercase tracking-[0.3em] text-gold">Recent activity</div>
+          {related.length === 0 ? (
+            <p className="mt-3 text-xs italic text-mid">The Numen has whispered nothing yet.</p>
+          ) : (
+            <ol className="mt-3 space-y-2 max-h-48 overflow-y-auto pr-1">
+              {related.map((e) => (
+                <li key={e.id} className="border-l border-line/60 pl-3 text-xs text-hi">
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-low">{e.kind} · {e.at}</span>
+                  <div>{e.text}</div>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+        <DialogFooter className="gap-2 sm:gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              pushActivity({
+                numen: numen.name,
+                kind: numen.status === "awake" ? "decision" : "alert",
+                text: numen.status === "awake" ? "Entered Silence — paused by overseer" : "Awoken — overseer resumed the rite",
+              });
+              onClose();
+            }}
+            className="rounded-full border border-aether/50 bg-aether/10 px-4 py-2 text-[11px] uppercase tracking-widest text-aether hover:bg-aether/20"
+          >
+            {numen.status === "awake" ? "Enter Silence" : "Awaken"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              pushActivity({ numen: numen.name, kind: "error", text: "Binding severed — funds returned" });
+              onClose();
+            }}
+            className="rounded-full border border-danger/50 bg-danger/5 px-4 py-2 text-[11px] uppercase tracking-widest text-danger hover:bg-danger/15"
+          >
+            Sever
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

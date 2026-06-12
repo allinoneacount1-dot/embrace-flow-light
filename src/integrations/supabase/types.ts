@@ -52,6 +52,30 @@ export type Database = {
           },
         ]
       }
+      activity: {
+        Row: {
+          created_at: string
+          id: number
+          kind: string
+          numen: string
+          text: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          kind: string
+          numen: string
+          text: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          kind?: string
+          numen?: string
+          text?: string
+        }
+        Relationships: []
+      }
       numina: {
         Row: {
           config: Json

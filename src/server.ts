@@ -44,10 +44,7 @@ export default {
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
-      console.error("[SERVER ERROR]", error);
-      if (error instanceof Error) {
-        console.error("[SERVER ERROR STACK]", error.stack);
-      }
+      console.error(error);
       return new Response(renderErrorPage(), {
         status: 500,
         headers: { "content-type": "text/html; charset=utf-8" },

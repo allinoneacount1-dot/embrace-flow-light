@@ -19,14 +19,19 @@ export function NuminaWalletProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const network = WalletAdapterNetwork.Devnet;
-  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
-  const wallets = useMemo(
-    () => [new PhantomWalletAdapter(), new SolflareWalletAdapter({ network })],
-    [network],
-  );
-
   if (!mounted) return <>{children}</>;
+
+  // Wallet adapters are instantiated ONLY on the client.
+  // PhantomWalletAdapter / SolflareWalletAdapter call window.addEventListener
+  // at module-evaluation time, which crashes SSR in Node.js.
+  const network = WalletAdapterNetwork.Devnet;
+  const endpoint = clusterApiUrl(network);
+  const wallets = useMemo(
+    () => typeof window !== "undefined"
+      ? [new PhantomWalletAdapter(), new SolflareWalletAdapter({ network })]
+      : [],
+    [],
+  );
 
   return (
     <ConnectionProvider endpoint={endpoint}>

@@ -47,10 +47,23 @@ export function useNuminaWallet() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
+  // During SSR / before mount, the WalletContext is absent and calling
+  // useWallet() throws a "missing provider" error. Skip it entirely.
+  if (!mounted) {
+    return {
+      mounted: false,
+      publicKey: null,
+      connecting: false,
+      connected: false,
+      walletName: null,
+      connect: async () => {},
+      disconnect: async () => {},
+    };
+  }
+
   const w = useWallet();
 
   const connect = useCallback(async () => {
-    if (!mounted) return;
     try {
       // Prefer Phantom if available; else fall back to first installed adapter.
       const phantom = w.wallets.find((x) => x.adapter.name === "Phantom" && x.readyState !== "Unsupported");
@@ -72,21 +85,7 @@ export function useNuminaWallet() {
       const msg = err instanceof Error ? err.message : "Unknown error";
       toast.error("The gate refused", { description: msg });
     }
-  }, [w, mounted]);
-
-  // During SSR / before mount, the WalletContext is absent and reading any
-  // property of `w` throws a "missing provider" error. Return safe defaults.
-  if (!mounted) {
-    return {
-      mounted: false,
-      publicKey: null,
-      connecting: false,
-      connected: false,
-      walletName: null,
-      connect,
-      disconnect: async () => {},
-    };
-  }
+  }, [w]);
 
   return {
     mounted,

@@ -36,13 +36,23 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState<"google" | "email" | null>(null);
+  const isPopup = !!window.opener;
 
   useEffect(() => {
     if (!loading && user) {
-      const dest = redirect && redirect.startsWith("/") ? redirect : "/sanctum";
-      navigate({ to: dest, replace: true });
+      if (isPopup) {
+        supabase.auth.getSession().then(({ data: { session }, error }) => {
+          if (!error && session) {
+            window.opener.postMessage({ type: 'AUTH_SUCCESS', session }, window.location.origin);
+            window.close();
+          }
+        });
+      } else {
+        const dest = redirect && redirect.startsWith("/") ? redirect : "/sanctum";
+        navigate({ to: dest, replace: true });
+      }
     }
-  }, [loading, user, redirect, navigate]);
+  }, [loading, user, redirect, navigate, isPopup]);
 
   async function withEmail(e: React.FormEvent) {
     e.preventDefault();
@@ -68,7 +78,7 @@ function AuthPage() {
           password: parsed.data.password,
         });
         if (error) throw error;
-        toast.success("The gate opens");
+        // success handled via useEffect
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";
@@ -81,11 +91,12 @@ function AuthPage() {
   async function withGoogle() {
     setBusy("google");
     try {
+      const redirectTo = !!window.opener
+        ? `${window.location.origin}${window.location.pathname}${window.location.search}`
+        : `${window.location.origin}/sanctum`;
       const result = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: {
-          redirectTo: window.location.origin + "/sanctum",
-        },
+        options: { redirectTo },
       });
       if (result.error) throw result.error instanceof Error ? result.error : new Error(String(result.error));
       // result.redirected → browser redirects, nothing to do.

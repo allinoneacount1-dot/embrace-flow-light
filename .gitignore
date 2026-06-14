@@ -42,3 +42,4 @@ dist-ssr
 # Environment
 .env
 .env.*
+.vercel

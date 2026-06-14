@@ -18,8 +18,6 @@ async function getServerEntry(): Promise<ServerEntry> {
   return serverEntryPromise;
 }
 
-// h3 swallows in-handler throws into a normal 500 Response with body
-// {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
 async function normalizeCatastrophicSsrResponse(response: Response): Promise<Response> {
   if (response.status < 500) return response;
   const contentType = response.headers.get("content-type") ?? "";
@@ -41,10 +39,18 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const handler = await getServerEntry();
+      const url = new URL(request.url);
+      console.error(`[SSR] ${request.method} ${url.pathname}`);
       const response = await handler.fetch(request, env, ctx);
+      console.error(`[SSR] ${url.pathname} -> ${response.status}`);
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
-      console.error(error);
+      const url = new URL(request.url);
+      console.error(`[SSR] CRASH ${url.pathname}:`, error);
+      if (error instanceof Error) {
+        console.error(`[SSR] name=${error.name} message=${error.message}`);
+        console.error(`[SSR] stack=${error.stack}`);
+      }
       return new Response(renderErrorPage(), {
         status: 500,
         headers: { "content-type": "text/html; charset=utf-8" },

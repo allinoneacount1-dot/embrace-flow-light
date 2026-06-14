@@ -12,6 +12,7 @@ export function WalletButton() {
   const { mounted, connected, connecting, publicKey, walletName, connect, disconnect } = useNuminaWallet();
 
   // SSR/initial render: stable disconnected button so hydration is consistent.
+  // Also covers the brief window before wallet adapters finish dynamic import.
   if (!mounted || !connected || !publicKey) {
     return (
       <button

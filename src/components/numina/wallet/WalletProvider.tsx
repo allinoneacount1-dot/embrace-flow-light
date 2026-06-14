@@ -1,37 +1,48 @@
-import { useMemo, useState, useEffect, useCallback, type ReactNode } from "react";
+import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
   ConnectionProvider,
   WalletProvider as SolanaWalletProvider,
   useWallet,
 } from "@solana/wallet-adapter-react";
-import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
-import { PhantomWalletAdapter } from "@solana/wallet-adapter-phantom";
-import { SolflareWalletAdapter } from "@solana/wallet-adapter-solflare";
+import { WalletAdapterNetwork, type WalletAdapter } from "@solana/wallet-adapter-base";
 import { clusterApiUrl } from "@solana/web3.js";
 
 /**
- * Wallet provider — mounts client-only because @solana/wallet-adapter-* touches
- * window/localStorage. During SSR we render children inside a "bare" shell so
- * useWallet() returns the default disconnected state.
+ * Wallet provider — mounts client-only because @solana/wallet-adapter-*
+ * touches window/localStorage. During SSR and before hydration we render
+ * children inside a "bare" shell so useWallet() returns the default
+ * disconnected state.
+ *
+ * Wallet adapters are lazy-instantiated to avoid module-eval crashes
+ * (PhantomWalletAdapter / SolflareWalletAdapter call window.addEventListener
+ * at import time, which crashes SSR / causes hydration mismatches).
  */
 export function NuminaWalletProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const [wallets, setWallets] = useState<WalletAdapter[]>([]);
 
-  if (!mounted) return <>{children}</>;
+  useEffect(() => {
+    setMounted(true);
+    // Dynamic import happens ONLY in browser, after mount.
+    // This prevents module-eval SSR crashes.
+    import("@solana/wallet-adapter-phantom").then(({ PhantomWalletAdapter }) => {
+      import("@solana/wallet-adapter-solflare").then(({ SolflareWalletAdapter }) => {
+        const network = WalletAdapterNetwork.Devnet;
+        setWallets([
+          new PhantomWalletAdapter(),
+          new SolflareWalletAdapter({ network }),
+        ]);
+      });
+    });
+  }, []);
 
-  // Wallet adapters are instantiated ONLY on the client.
-  // PhantomWalletAdapter / SolflareWalletAdapter call window.addEventListener
-  // at module-evaluation time, which crashes SSR in Node.js.
+  // Don't render wallet context until adapters are loaded.
+  // Prevents useWallet() from being called with empty wallets array.
+  if (!mounted || wallets.length === 0) return <>{children}</>;
+
   const network = WalletAdapterNetwork.Devnet;
   const endpoint = clusterApiUrl(network);
-  const wallets = useMemo(
-    () => typeof window !== "undefined"
-      ? [new PhantomWalletAdapter(), new SolflareWalletAdapter({ network })]
-      : [],
-    [],
-  );
 
   return (
     <ConnectionProvider endpoint={endpoint}>
